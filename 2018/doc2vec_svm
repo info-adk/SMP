@@ -10,7 +10,7 @@ from sklearn.model_selection import KFold
 from gensim.models.doc2vec import Doc2Vec,TaggedDocument
 import numpy as np
 
-f = open("/home/iiip/Quincy/personality/data/essays.csv","r")
+f = open("/home/info/Info/personality-detection-master/essays.csv","r")
 csv_file = csv.reader(f)
 
 def clean_str(string):
@@ -32,6 +32,9 @@ def clean_str(string):
 data,train,test = [],[],[]  # 放特征向量
 label_name = []
 
+label_list=[]
+count = 0
+
 for line in csv_file:
     if csv_file.line_num == 1:
         label_name = line[2:]
@@ -39,13 +42,14 @@ for line in csv_file:
     authid = line[0]
     content = line[1]
     one_text_label = [line[2],line[3],line[4],line[5],line[6]] # 五个标签
+    label_list.append(one_text_label)
     content = clean_str(content)
-    data.append(TaggedDocument(content.split(),one_text_label))
-
-
+    data.append(TaggedDocument(content.split(),tags=[count]))
+    count += 1
 
 # model.save("/home/iiip/Quincy/personality/personality-detection-master/doc2vec_model_200.model")
 # model = Doc2Vec.load("/home/iiip/Quincy/personality/personality-detection-master/doc2vec_model_200.model")
+
 
 def metrics_result(actual, predict):
     # print '#精度:{0:.3f}'.format(metrics.precision_score(actual, predict,average='weighted'))
@@ -60,7 +64,7 @@ kf = KFold(n_splits=10)
 data_array = np.array(data)
 result = {"cEXT":[],"cNEU":[],"cAGR":[],"cCON":[],"cOPN":[]}
 for i in range(10): # 训练10次特征模型
-    model = Doc2Vec(data, size=200, workers=8)
+    model = Doc2Vec(data, vector_size=200, workers=8)
     model.train(data, total_examples=model.corpus_count, epochs=100)
     for number in range(len(label_name)):  #针对每一个标签
         ave_accuracy = 0
@@ -68,22 +72,20 @@ for i in range(10): # 训练10次特征模型
         ave_f1 = 0
 
         for train_index,test_index in kf.split(data): # 10-fold
-            print("done"),
+            print("-"),
             train,test = data_array[train_index].tolist(),data_array[test_index].tolist()
 
             train_X,train_y1 = [],[]
             test_X,test_y1 = [],[]
 
-
             for id in xrange(len(train)):  # xrange是生成器，减小内存消耗
                 infer_vector = model.infer_vector(train[id][0])
                 train_X.append(infer_vector)
-                train_y1.append(train[id][1][number]) #train[id][1][n] 第id个文档的第n个标签
-
+                train_y1.append(label_list[train[id][1][0]][number]) 
             for id in xrange(len(test)):
                 infer_vector = model.infer_vector(test[id][0])
                 test_X.append(infer_vector)
-                test_y1.append(test[id][1][number])
+                test_y1.append(label_list[test[id][1][0]][number])
 
 
             clf = SVC(kernel="linear")
@@ -102,11 +104,13 @@ for i in range(10): # 训练10次特征模型
         print "ave_f1: ",ave_f1/10
         result[label_name[number]].append(accuracy)
 
-with open("/home/iiip/Quincy/personality/personality-detection-master/10 Fold", "a") as f:
+with open("/home/info/Info/personality-detection-master/doc2vec_model_200.model/10 Fold", "a") as f:
     get_average = lambda x:1.0*sum(x)/len(x)
     for label in result:
         average = get_average(result[label])
-        f.write(label,": ")
+        f.write(label+": ")
         for i in result[label]:
-            f.write(i," ")
-        f.write(average,"\n")
+            f.write(i)
+            f.write(" ")
+        f.write(average)
+        f.write("\n")
