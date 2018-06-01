@@ -62,7 +62,9 @@ def metrics_result(actual, predict):
 
 kf = KFold(n_splits=10)
 data_array = np.array(data)
-result = {"cEXT":[],"cNEU":[],"cAGR":[],"cCON":[],"cOPN":[]}
+result1 = {"cEXT":[],"cNEU":[],"cAGR":[],"cCON":[],"cOPN":[]}
+result2 = {"cEXT":[],"cNEU":[],"cAGR":[],"cCON":[],"cOPN":[]}
+result3 = {"cEXT":[],"cNEU":[],"cAGR":[],"cCON":[],"cOPN":[]}
 for i in range(10): # 训练10次特征模型
     model = Doc2Vec(data, vector_size=200, workers=8)
     model.train(data, total_examples=model.corpus_count, epochs=100)
@@ -81,7 +83,8 @@ for i in range(10): # 训练10次特征模型
             for id in xrange(len(train)):  # xrange是生成器，减小内存消耗
                 infer_vector = model.infer_vector(train[id][0])
                 train_X.append(infer_vector)
-                train_y1.append(label_list[train[id][1][0]][number]) 
+                train_y1.append(label_list[train[id][1][0]][number]) #train[id][1][n] 第id个文档的第n个标签
+
             for id in xrange(len(test)):
                 infer_vector = model.infer_vector(test[id][0])
                 test_X.append(infer_vector)
@@ -102,15 +105,16 @@ for i in range(10): # 训练10次特征模型
         print "ave_accuracy: ",ave_accuracy/10
         print "ave_recall: ",ave_recall/10
         print "ave_f1: ",ave_f1/10
-        result[label_name[number]].append(accuracy)
-
-with open("/home/info/Info/personality-detection-master/doc2vec_model_200.model/10 Fold", "a") as f:
+        result1[label_name[number]].append(ave_accuracy/10)
+        result2[label_name[number]].append(ave_recall/10)
+        result3[label_name[number]].append(ave_f1/10)
+        
+with open("/home/info/Info/personality-detection-master/d2v_10fold_10model_essay.txt", "w") as f:
     get_average = lambda x:1.0*sum(x)/len(x)
-    for label in result:
-        average = get_average(result[label])
-        f.write(label+": ")
-        for i in result[label]:
-            f.write(i)
-            f.write(" ")
-        f.write(average)
-        f.write("\n")
+    write_content = ""
+    for label in result1:
+        acc = get_average(result1[label])
+        rec = get_average(result2[label])
+        f1 = get_average(result3[label])
+        write_content +=str(label)+"\n"+"accuracy: "+str(acc)+"\n"+"recall: "+str(rec)+"\n"+"f1: "+str(f1)+"\n"+"\n"
+    f.write(write_content)
